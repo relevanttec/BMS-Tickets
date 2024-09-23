@@ -19,10 +19,13 @@ ROADMAP:
   MOST IMPORTANT ISSUES - 
   
   Add refresh token functionality to increase longevity of runtime
+  
   Implement encrypting, or other way of securing, access and refresh tokens
 
   Minor Issues - 
   
   Refactor API calls and data extraction (lots of repetitive code)
+  
   Add filename selection feature
+  
   Integrate date selection and page count features to automatically update when user selects a date (this is dificult because I don't really want to make a call every  time somebody opens the calendar and presses a day)
