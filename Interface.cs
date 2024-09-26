@@ -57,7 +57,7 @@ namespace BMS_Tickets
 
                     RefreshToken = (String)(Result.Property("refrehToken").Value);
 
-                    AccessTokenExpire = (DateTime)(Result.Property("accessTokenExpireOn"))
+                    AccessTokenExpire = (DateTime)(Result.Property("accessTokenExpireOn"));
 
 
                     MessageBox.Show("You have successfully authenticated");
@@ -213,8 +213,15 @@ namespace BMS_Tickets
                 //Obtain the value of "success"
                 bool Success = (bool)(data.Property("success").Value);
 
-                //Succesful auth API call if true
+                //Successful auth API call if true
                 if (Success == true)
+                {
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
     }
