@@ -13,6 +13,8 @@ namespace BMS_Tickets
         private static String AccessToken { get; set; }
         private static String RefreshToken { get; set; }
 
+        public static DateTime AccessTokenExpire { get; set; }
+
         private static int PageCount { get; set; }
 
         static HttpClient MyClient = new HttpClient
@@ -24,7 +26,7 @@ namespace BMS_Tickets
         //This function defines the authentication, accepts a FormUrlEncodedContent parameter which includes credential info
         public static async void GetAccess(FormUrlEncodedContent content)
         {
-            //Clear any existing headers and add the acccept header
+            //Clear any existing headers and add the accept header
             MyClient.DefaultRequestHeaders.Clear();
             MyClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -52,6 +54,10 @@ namespace BMS_Tickets
 
                     //Extract the AccessToken 
                     AccessToken = (String)(Result.Property("accessToken").Value);
+
+                    RefreshToken = (String)(Result.Property("refrehToken").Value);
+
+                    AccessTokenExpire = (DateTime)(Result.Property("accessTokenExpireOn"));
 
 
                     MessageBox.Show("You have successfully authenticated");
@@ -176,6 +182,50 @@ namespace BMS_Tickets
             // Write the serialized JSON object to the file selected by the user
             System.IO.File.WriteAllText(@path + @"\Tickets.json", SerializedTickets);
 
+        }
+
+        public static async void GetRefresh()
+        {
+            //Clear any existing headers and add the accept header
+            MyClient.DefaultRequestHeaders.Clear();
+            MyClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var requestData = new List<KeyValuePair<String, String>>();
+            requestData.Add(new KeyValuePair<String, String>("AccessToken", AccessToken));
+            requestData.Add(new KeyValuePair<String, String>("RefreshToken", RefreshToken));
+
+            var content = new FormUrlEncodedContent(requestData);
+
+            try
+            {
+
+                //Define the request then make the call
+                var request = new HttpRequestMessage(HttpMethod.Post, "security/refreshtoken") { Content = content };
+
+                HttpResponseMessage response = await MyClient.SendAsync(request);
+
+
+                string ResponseContent = await response.Content.ReadAsStringAsync();
+
+                //Deserialize the JSON response text for consumption
+                var data = (JObject)(JsonConvert.DeserializeObject(ResponseContent));
+
+                //Obtain the value of "success"
+                bool success = (bool)(data.Property("success").Value);
+
+                //Successful auth API call if true
+                if (success == true)
+                {
+                    var results = (JObject)(data.Property("Result").Value);
+
+                    AccessToken = (string)(results.Property("AccessToken").Value);
+                    RefreshToken = (string)(results.Property("RefreshToken").Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
     }
