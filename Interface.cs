@@ -14,6 +14,7 @@ namespace BMS_Tickets
         private static String RefreshToken { get; set; }
 
         public static DateTime AccessTokenExpire { get; set; }
+        public static DateTime RefreshTokenExpire { get; set; }
 
         private static int PageCount { get; set; }
 
@@ -58,6 +59,8 @@ namespace BMS_Tickets
                     RefreshToken = (String)(Result.Property("refrehToken").Value);
 
                     AccessTokenExpire = (DateTime)(Result.Property("accessTokenExpireOn"));
+
+                    RefreshTokenExpire = (DateTime)(Result.Property("refreshTokenExpire").Value);
 
 
                     MessageBox.Show("You have successfully authenticated");
@@ -220,11 +223,24 @@ namespace BMS_Tickets
 
                     AccessToken = (string)(results.Property("AccessToken").Value);
                     RefreshToken = (string)(results.Property("RefreshToken").Value);
+
+                    AccessTokenExpire = (DateTime)(results.Property("AccessTokenExpireOn").Value);
+                    RefreshTokenExpire = (DateTime)(results.Property("RefreshTokenExpireOn").Value);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
+            }
+        }
+
+        public static void CheckRefresh()
+        {
+            var TTL = AccessTokenExpire - DateTime.UtcNow;
+
+            if (TTL < new TimeSpan(0,2,0))
+            {
+                GetRefresh();
             }
         }
 
