@@ -211,11 +211,15 @@ namespace BMS_Tickets
                 var data = (JObject)(JsonConvert.DeserializeObject(ResponseContent));
 
                 //Obtain the value of "success"
-                bool Success = (bool)(data.Property("success").Value);
+                bool success = (bool)(data.Property("success").Value);
 
                 //Successful auth API call if true
-                if (Success == true)
+                if (success == true)
                 {
+                    var results = (JObject)(data.Property("Result").Value);
+
+                    AccessToken = (string)(results.Property("AccessToken").Value);
+                    RefreshToken = (string)(results.Property("RefreshToken").Value);
                 }
             }
             catch (Exception ex)

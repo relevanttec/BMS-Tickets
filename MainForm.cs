@@ -90,6 +90,7 @@ namespace BMS_Tickets
 
             //API call
             CallTimer.Elapsed += (s, en) => Interface.GetTickets(start, end, FileLocation);
+            CallTimer.Elapsed += (s, en) => Interface.CheckRefresh();
             CallTimer.AutoReset = true;
             CallTimer.Enabled = true;
             
