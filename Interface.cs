@@ -8,8 +8,9 @@ using Newtonsoft.Json.Linq;
 
 namespace BMS_Tickets
 {
-    static class Interface
+    class Interface
     {
+        private static JsonHandler json = new JsonHandler();
         private static String AccessToken { get; set; }
         private static String RefreshToken { get; set; }
 
@@ -38,7 +39,9 @@ namespace BMS_Tickets
 
                 HttpResponseMessage response = await MyClient.SendAsync(request);
 
-            
+                json.SplitInput(response);
+
+            /*
                 string ResponseContent = await response.Content.ReadAsStringAsync();
 
                 //Deserialize the JSON response text for consumption
@@ -46,21 +49,20 @@ namespace BMS_Tickets
 
                 //Obtain the value of "success"
                 bool Success = (bool)(data.Property("success").Value);
+            */
 
                 //Succesful auth API call if true
-                if (Success == true)
+                if (json.Success)
                 {
-                    //Store the Call results
-                    var Result = (JObject)(data.Property("result").Value);
 
                     //Extract the AccessToken 
-                    AccessToken = (String)(Result.Property("accessToken").Value);
+                    AccessToken = (String)(json.Result.Property("accessToken").Value);
 
-                    RefreshToken = (String)(Result.Property("refrehToken").Value);
+                    RefreshToken = (String)(json.Result.Property("refrehToken").Value);
 
-                    AccessTokenExpire = (DateTime)(Result.Property("accessTokenExpireOn"));
+                    AccessTokenExpire = (DateTime)(json.Result.Property("accessTokenExpireOn"));
 
-                    RefreshTokenExpire = (DateTime)(Result.Property("refreshTokenExpire").Value);
+                    RefreshTokenExpire = (DateTime)(json.Result.Property("refreshTokenExpire").Value);
 
 
                     MessageBox.Show("You have successfully authenticated");

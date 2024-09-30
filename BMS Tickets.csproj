@@ -80,6 +80,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="JsonHandler.cs" />
     <Compile Include="Interface.cs" />
     <Compile Include="LoginForm.cs">
       <SubType>Form</SubType>
