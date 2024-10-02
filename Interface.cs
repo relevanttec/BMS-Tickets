@@ -10,12 +10,12 @@ namespace BMS_Tickets
 {
     class Interface
     {
-        private static JsonHandler json = new JsonHandler();
-        private static String AccessToken { get; set; }
-        private static String RefreshToken { get; set; }
+        private static JsonHandler _jsonHandler = new JsonHandler();
+        private static string AccessToken { get; set; }
+        private static string RefreshToken { get; set; }
 
-        public static DateTime AccessTokenExpire { get; set; }
-        public static DateTime RefreshTokenExpire { get; set; }
+        private static DateTime AccessTokenExpire { get; set; }
+        private static DateTime RefreshTokenExpire { get; set; }
 
         private static int PageCount { get; set; }
 
@@ -37,32 +37,22 @@ namespace BMS_Tickets
                 //Define the request then make the call
                 var request = new HttpRequestMessage(HttpMethod.Post, "security/authenticate") { Content = content};
 
-                HttpResponseMessage response = await MyClient.SendAsync(request);
+                //Successful auth API call if true
+                _jsonHandler.SplitInput(await MyClient.SendAsync(request));
 
-                json.SplitInput(response);
-
-            /*
-                string ResponseContent = await response.Content.ReadAsStringAsync();
-
-                //Deserialize the JSON response text for consumption
-                var data = (JObject)(JsonConvert.DeserializeObject(ResponseContent));
-
-                //Obtain the value of "success"
-                bool Success = (bool)(data.Property("success").Value);
-            */
-
-                //Succesful auth API call if true
-                if (json.Success)
+                if (_jsonHandler.GetSuccess())
                 {
 
                     //Extract the AccessToken 
-                    AccessToken = (String)(json.Result.Property("accessToken").Value);
+                    AccessToken = _jsonHandler.GetAccessToken();
 
-                    RefreshToken = (String)(json.Result.Property("refrehToken").Value);
+                    RefreshToken = _jsonHandler.GetRefreshToken();
 
-                    AccessTokenExpire = (DateTime)(json.Result.Property("accessTokenExpireOn"));
+                    AccessTokenExpire = _jsonHandler.GetAccessExpireOn();
 
-                    RefreshTokenExpire = (DateTime)(json.Result.Property("refreshTokenExpire").Value);
+                    RefreshTokenExpire = _jsonHandler.GetRefreshExpireOn();
+
+                    RefreshTimer();
 
 
                     MessageBox.Show("You have successfully authenticated");
@@ -83,7 +73,7 @@ namespace BMS_Tickets
         //This function call returns the total number of tickets
         //Takes two, start and end, dates formatted as strings as parameters
         //Each page will be defined to have 100 tickets in subsequent calls
-        public static async void GetPageCount(String start, String end)
+        public static async void GetPageCount(string start, string end)
         {
             //Clear any lingering headers, assign the accept and auth headers
             MyClient.DefaultRequestHeaders.Clear();
@@ -92,29 +82,21 @@ namespace BMS_Tickets
 
 
             //Build our parameter string in the format "?NAME=VALUE&NAME=VALUE&...."
-            String Parameters = "?OpenDateFrom=" + start + "&OpenDateTo=" + end + "&ExcludeCompleted=1";
+            string Parameters = "?OpenDateFrom=" + start + "&OpenDateTo=" + end + "&ExcludeCompleted=1";
 
             try
             {
                 //Build request,GET method, parameter string attached on the end
                 var request = new HttpRequestMessage(HttpMethod.Get, "servicedesk/tickets/count" + Parameters);
 
-                HttpResponseMessage response = await MyClient.SendAsync(request);
+                _jsonHandler.SplitInput(await MyClient.SendAsync(request));
 
-                string ResponseContent = await response.Content.ReadAsStringAsync();
-
-                var data = (JObject)(JsonConvert.DeserializeObject(ResponseContent));
-
-                var success = (bool)(data.Property("success").Value);
-
-                if (success)
+                if (_jsonHandler.GetSuccess())
                 {
 
-                    var result = (JObject)data.Property("result").Value;
+                    var ticketCount = _jsonHandler.GetTicketCount();
 
-                    var TicketCount = (double)(result.Property("count").Value);
-
-                    PageCount = (int)(Math.Ceiling(TicketCount / 100));
+                    PageCount = (int)Math.Ceiling(ticketCount / 100.0);
 
                     MessageBox.Show("Dates Selected, Pages Counted");
                 }
@@ -122,9 +104,6 @@ namespace BMS_Tickets
                 {
                     MessageBox.Show("Something went wrong. Ensure you authenticated and try again");
                 }
-
-
-
             }
             catch (Exception ex)
             {
@@ -132,17 +111,17 @@ namespace BMS_Tickets
             }
         }
 
-        public static async void GetTickets(String start, String end, String path)
+        public static async void GetTickets(string start, string end, string path)
         {
-            const String PageSize ="100";
+            const string PageSize ="100";
 
             //Clear any lingering headers, assign the accept and auth headers
             MyClient.DefaultRequestHeaders.Clear();
             MyClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             MyClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
 
-            // String of parameters for the API call
-            String Parameters = "?Filter.OpenDateFrom=" + start + "&Filter.OpenDateTo=" + end + "&Filter.ExcludeCompleted=true" +
+            // string of parameters for the API call
+            string Parameters = "?Filter.OpenDateFrom=" + start + "&Filter.OpenDateTo=" + end + "&Filter.ExcludeCompleted=true" +
                 "&PageSize=" + PageSize + "&PageNumber=";
 
             // Initialize a list to hold all objects obtained from the paged API calls
@@ -154,24 +133,15 @@ namespace BMS_Tickets
                 // Create the request, notice the appended page number for paged calls
                 var request = new HttpRequestMessage(HttpMethod.Get, "servicedesk/tickets/searchselect" + Parameters + currPage);
 
-                HttpResponseMessage response = await MyClient.SendAsync(request);
+                _jsonHandler.SplitForTickets(await MyClient.SendAsync(request));
 
-                // Convert the response content to a string
-                string ResponseContent = await response.Content.ReadAsStringAsync();
-
-                // Deserialize and convert to a JObject the response content
-                var data = (JObject)(JsonConvert.DeserializeObject(ResponseContent));
-
-                // Obtain the success value to determine if call was made successfully
-                var success = (bool)(data.Property("success").Value);
-
-                if (success)
+                if (_jsonHandler.GetSuccess())
                 {
                     // The result property holds the ticket information (100 per page)
-                    var result = data.Property("result").Value;
+                    var ticketPage = _jsonHandler.GetTicketPage();
 
                     // Append the tickets to the initialized AllTokens list
-                    AllTickets.Add(result);
+                    AllTickets.Add(ticketPage);
                 }
                 else
                 {
@@ -184,6 +154,7 @@ namespace BMS_Tickets
             // Serialized the list of tickets for writing to a file
             var SerializedTickets = JsonConvert.SerializeObject(AllTickets);
 
+            System.Console.WriteLine("Pulled Tickets" + DateTime.Now);
             // Write the serialized JSON object to the file selected by the user
             System.IO.File.WriteAllText(@path + @"\Tickets.json", SerializedTickets);
 
@@ -195,9 +166,9 @@ namespace BMS_Tickets
             MyClient.DefaultRequestHeaders.Clear();
             MyClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var requestData = new List<KeyValuePair<String, String>>();
-            requestData.Add(new KeyValuePair<String, String>("AccessToken", AccessToken));
-            requestData.Add(new KeyValuePair<String, String>("RefreshToken", RefreshToken));
+            var requestData = new List<KeyValuePair<string, string>>();
+            requestData.Add(new KeyValuePair<string, string>("AccessToken", AccessToken));
+            requestData.Add(new KeyValuePair<string, string>("RefreshToken", RefreshToken));
 
             var content = new FormUrlEncodedContent(requestData);
 
@@ -206,29 +177,25 @@ namespace BMS_Tickets
 
                 //Define the request then make the call
                 var request = new HttpRequestMessage(HttpMethod.Post, "security/refreshtoken") { Content = content };
+                
+                _jsonHandler.SplitInput(await MyClient.SendAsync(request));
 
-                HttpResponseMessage response = await MyClient.SendAsync(request);
-
-
-                string ResponseContent = await response.Content.ReadAsStringAsync();
-
-                //Deserialize the JSON response text for consumption
-                var data = (JObject)(JsonConvert.DeserializeObject(ResponseContent));
-
-                //Obtain the value of "success"
-                bool success = (bool)(data.Property("success").Value);
-
-                //Successful auth API call if true
-                if (success == true)
+                if (_jsonHandler.GetSuccess())
                 {
-                    var results = (JObject)(data.Property("Result").Value);
 
-                    AccessToken = (string)(results.Property("AccessToken").Value);
-                    RefreshToken = (string)(results.Property("RefreshToken").Value);
+                    //Extract the AccessToken 
+                    AccessToken = _jsonHandler.GetAccessToken();
 
-                    AccessTokenExpire = (DateTime)(results.Property("AccessTokenExpireOn").Value);
-                    RefreshTokenExpire = (DateTime)(results.Property("RefreshTokenExpireOn").Value);
+                    RefreshToken = _jsonHandler.GetRefreshToken();
+
+                    AccessTokenExpire = _jsonHandler.GetAccessExpireOn();
+
+                    RefreshTokenExpire = _jsonHandler.GetRefreshExpireOn();
+
+                    System.Console.WriteLine("Refreshed Token" + DateTime.Now);
                 }
+
+
             }
             catch (Exception ex)
             {
@@ -236,20 +203,14 @@ namespace BMS_Tickets
             }
         }
 
-        public static void CheckRefresh()
+        private static void RefreshTimer()
         {
-            var TTL = AccessTokenExpire - DateTime.UtcNow;
-
-            if (TTL < new TimeSpan(0,2,0))
-            {
-                GetRefresh();
-            }
+            var fourteenMinutes = 15 * 60 * 1000;
+            var CallTimer = new System.Timers.Timer(fourteenMinutes);
+            CallTimer.Elapsed += (s, en) => GetRefresh();
+            CallTimer.AutoReset = true;
+            CallTimer.Enabled = true;
         }
 
     }
 }
-
-
-
-
-
